@@ -159,7 +159,14 @@ GEMMUL8_REPO_DIR ?= third_party/GEMMul8
 # 6bf409b is the v3.1.1 release.
 GEMMUL8_COMMIT   ?= 6bf409bdc69a638970ad5f91948a8b3e44c5378b
 GEMMUL8_DIR      ?= $(GEMMUL8_REPO_DIR)
+# GEMMUL8=off: build without GEMMul8 (plain cuBLAS FP64 GEMMs via gemmul8_bridge_stub.cu).
+# Needed for CUDA toolkits older than 12.8 (GEMMul8 uses newer cuBLASLt features).
+GEMMUL8          ?= on
+ifeq ($(GEMMUL8),off)
+GEMMUL8_LIB      :=
+else
 GEMMUL8_LIB      ?= $(GEMMUL8_DIR)/lib/libgemmul8.a
+endif
 GEMMUL8_OPENMX_OBJ ?= $(GEMMUL8_DIR)/src/gemmul8_openmx.o
 GEMMUL8_CUDA_PATH ?= $(NVHPC_CUDA_HOME)
 GEMMUL8_GPU_ARCH ?= auto
@@ -735,8 +742,13 @@ Divide_Conquer.o: Divide_Conquer.c openmx_common.h
 	$(CC3) -c Divide_Conquer.c
 Divide_Conquer_LNO.o: Divide_Conquer_LNO.c openmx_common.h
 	$(CC) -c Divide_Conquer_LNO.c
+ifeq ($(GEMMUL8),off)
+gemmul8_bridge.o: gemmul8_bridge_stub.cu
+	$(NVCC_GEMMUL8_ENV) $(NVCC) $(NVCC_GEMMUL8_FLAGS) -c gemmul8_bridge_stub.cu -o gemmul8_bridge.o
+else
 gemmul8_bridge.o: gemmul8_bridge.cu openmx_common.h $(GEMMUL8_DIR)/include/gemmul8.hpp $(GEMMUL8_LIB)
 	$(NVCC_GEMMUL8_ENV) $(NVCC) $(NVCC_GEMMUL8_FLAGS) -c gemmul8_bridge.cu -o gemmul8_bridge.o
+endif
 $(GEMMUL8_DIR)/Makefile:
 	mkdir -p $(GEMMUL8_REPO_DIR)
 	cd $(GEMMUL8_REPO_DIR) && \
