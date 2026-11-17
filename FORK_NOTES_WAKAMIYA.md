@@ -31,6 +31,18 @@ HS.fileout.ml  on    # 既定は off（元の動作）
 - scfout に埋め込まれる入力ファイルに `HS.fileout.ml on` が残るので、OLPmo が 0 の出力を区別できる。
 - 標準出力に `<SCF2File> time: OLPpo …, OLPmo …, write …` を出す（両方のモードで）。
 
+### `GEMMUL8=off`（ブランチ `gemmul8-optional`）
+
+GEMMul8 は CUDA 12.8 以降の cuBLASLt の機能を要するので、古い CUDA ではビルドできない。`make GEMMUL8=off` で、
+GEMMul8 の橋渡しを cuBLAS の倍精度の行列積だけの代わり（`gemmul8_bridge_stub.cu`）に置き換える。
+`scf.gemmul8.enable off` で実行するのと同じ。既定（`GEMMUL8=on`）は変わらない。
+
+## GPU 実行の注意: `OPENMX_BAND_GPU_SWITCH_NUM`
+
+上流の既定 800 では、行列の次元が 800 未満のバンド計算は CPU の ELPA に退避する。TSUBAME の gpu_h（1 MPI × 4 スレッド）
+では退避の方がはるかに遅かった（Pt(111)+CO、次元 442: 846 s → GPU で 76 s。バルク Pt、次元 26: 72 s → 28 s）。
+GPU で回すときは `OPENMX_BAND_GPU_SWITCH_NUM=1`（または `OPENMX_BAND_GPU_DIAG=1`）を `mpirun -x` で渡す。
+
 ## TSUBAME4 でのビルド（NVHPC 26.1 / CUDA 13.1）
 
 ```bash
