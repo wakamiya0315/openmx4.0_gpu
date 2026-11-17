@@ -58,3 +58,25 @@ make -j4 NVHPC_ROOT=$sdk NVHPC_CUDA_VERSION=13.1 NVHPC_CUDA_HOME=$sdk/cuda/13.1 
 FFTW 3.3.11 と GEMMul8 は make が取得する（計算ノードで通信できない場合は、ログインノードで先に取得する）。
 実行は `mpirun -np 1 --bind-to none openmx openmx.dat -nt 4`（gpu_h）。CPU では入力に `scf.eigen.lib elpa2` を足し、
 `mpirun -np 4 ... -nt 1` など。数値の再現性のため `scf.gemmul8.enable off` を推奨。
+
+## LRZ Linux Cluster（CPU のみ、GPU なし）でのビルドと実行（2026-11-17 確認）
+
+LRZ の NVHPC は 24.9（CUDA 12.6）までなので `GEMMUL8=off` が要る。GPU も CUDA のドライバもない計算ノードで、
+CPU 経路（`scf.eigen.lib elpa2`）が動き、TSUBAME の結果と H 2.7e-10 Ha・S 1e-13・DM 6e-10 以内で一致した。
+
+```bash
+# module purge はしない（nvhpc などを提供する stack のモジュールまで外れる）
+module load nvhpc/24.9 gcc/13.3.0
+N=/dss/lrzsys/sys/spack/release/24.4.0/opt/x86_64/nvhpc/24.9-gcc-geugw7j/Linux_x86_64/24.9
+cd source
+# FFTW と GEMMul8 の取得（git・curl）はログインノードで先に済ませる（計算ノードに git がない）
+make -j12 NVHPC_ROOT=$N NVHPC_CUDA_VERSION=12.6 NVHPC_CUDA_HOME=$N/cuda/12.6 \
+  NVHPC_MPI_BIN=$N/comm_libs/12.6/hpcx/hpcx-2.20/ompi/bin NVCC_HOST=$(which g++) GEMMUL8_GPU_ARCH=90 \
+  GEMMUL8=off HOST_CC=$(which gcc) \
+  PATH="$(dirname $(which gcc)):$N/compilers/bin:$N/comm_libs/12.6/hpcx/hpcx-2.20/ompi/bin:$N/cuda/12.6/bin:/usr/bin:/bin" openmx
+```
+
+- Makefile は PATH を上書きするが、LRZ の計算ノードには `/usr/bin/gcc` がない（`force_rpath` と NVHPC の `nvdd` が gcc を要る）
+  ので、gcc のモジュールの場所を含む PATH を `make` に渡す。
+- 実行は Slurm で `--ntasks` を MPI のプロセス数に合わせ、NVHPC の `mpirun`（hpcx）で起動する。`--ntasks=1` だと
+  `mpirun -np 4` は slot 不足で起動しない。
