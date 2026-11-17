@@ -2822,6 +2822,8 @@ int List_YOUSO[NYOUSO];
 int PreNum,TempNum,TCpyCell,CpyCell;
 int Runtest_flag;
 int Num_Mixing_pDM,level_stdout,level_fileout,HS_fileout;
+/* HS.fileout.ml: scfout for ML Hamiltonians (skip geometry-only OLPpo/OLPmo) */
+int HS_fileout_ml;
 int memoryusage_fileout,monitoring_memory_usage;  
 int Pulay_SCF,Pulay_SCF_original,EveryPulay_SCF,SCF_Control_Temp;
 int Cnt_switch,RCnt_switch,SICnt_switch,ACnt_switch,SCnt_switch;

@@ -70,6 +70,9 @@ void SCF2File(char *mode, char *inputfile)
   /* OLPpo: matrix for position operator */
 
   int direction, order;
+  /* HS.fileout.ml: write order_max=0 so that no OLPpo block is written (restored at the end) */
+  int order_max_saved = order_max;
+  if (HS_fileout_ml==1) order_max = 0;
   OLPpo=(double******)malloc(sizeof(double*****)*3);
   for (direction=0; direction<3; direction++){
     OLPpo[direction]=(double*****)malloc(sizeof(double****)*order_max);
@@ -142,7 +145,8 @@ void SCF2File(char *mode, char *inputfile)
 
 	OLPmo[direction][Mc_AN][h_AN] = (double**)malloc(sizeof(double*)*tno0);
 	for (i=0; i<tno0; i++){
-	  OLPmo[direction][Mc_AN][h_AN][i] = (double*)malloc(sizeof(double)*tno1);
+	  /* calloc: OLPmo stays zero when HS.fileout.ml skips Calc_OLPmo */
+	  OLPmo[direction][Mc_AN][h_AN][i] = (double*)calloc(tno1, sizeof(double));
 	}
       }
     }
@@ -173,13 +177,23 @@ void SCF2File(char *mode, char *inputfile)
     if (succeed_open==1){
       if (myid==Host_ID) printf("Save the scfout file (%s)\n",fname);
 
-      /* matrix elements for position operator */
-      Calc_OLPpo(OLPpo);
+      double time_po0 = MPI_Wtime();
+      /* matrix elements for position operator (skipped with HS.fileout.ml) */
+      if (HS_fileout_ml==0) Calc_OLPpo(OLPpo);
+      double time_po1 = MPI_Wtime();
 
-      /* matrix elements for momentum operator */
-      Calc_OLPmo(OLPmo);
+      /* matrix elements for momentum operator (skipped with HS.fileout.ml: written as zeros) */
+      if (HS_fileout_ml==0) Calc_OLPmo(OLPmo);
+      double time_mo1 = MPI_Wtime();
 
       Output( fp, inputfile, OLPpo, OLPmo );
+      double time_out1 = MPI_Wtime();
+      if (myid==Host_ID){
+        printf("<SCF2File> time: OLPpo %.3f s, OLPmo %.3f s, write %.3f s%s\n",
+               time_po1-time_po0, time_mo1-time_po1, time_out1-time_mo1,
+               HS_fileout_ml==1 ? " (HS.fileout.ml on: OLPpo omitted, OLPmo written as zeros)" : "");
+        fflush(stdout);
+      }
 
       if (myid==Host_ID) fclose(fp);
     } 
@@ -268,6 +282,7 @@ void SCF2File(char *mode, char *inputfile)
   }
   free(OLPmo);
   OLPmo=NULL;
+  order_max = order_max_saved;
 }
 
 

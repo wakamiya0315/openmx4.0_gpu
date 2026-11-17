@@ -4335,6 +4335,12 @@ void Input_std(char *file)
   ****************************************************/
  
   input_logical("HS.fileout",&HS_fileout,0);
+  /* HS.fileout.ml on: omit the position (OLPpo) and momentum (OLPmo) operator matrices
+     from the scfout. They depend only on the geometry and the basis (not on the SCF),
+     are not needed for ML Hamiltonians, and their real-space-grid integration is serial.
+     order_max=0 is written (no OLPpo blocks) and OLPmo is written as zeros, so that
+     existing scfout readers (read_scfout, HamGNN read_openmx) keep working. */
+  input_logical("HS.fileout.ml",&HS_fileout_ml,0);
 
   /****************************************************
                    Voronoi charge
